@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { tmpdir, userInfo } from "node:os"
@@ -8,10 +9,20 @@ function jemacsHome(): string {
   return process.env.JEMACS_HOME ?? join(homedir(), "programming", "vibe", "jemacs-opentui")
 }
 
-async function loadJemacsPlugin(editor: Editor, relativePath: string): Promise<void> {
-  const mod = await import(join(jemacsHome(), relativePath))
-  if (typeof mod.install !== "function") throw new Error(`missing install() in ${relativePath}`)
-  await mod.install(editor)
+async function loadJemacsPlugin(editor: Editor, plugin: string): Promise<void> {
+  const home = jemacsHome()
+  const candidates = [
+    join(home, "plugins", `${plugin}.ts`),
+    join(home, "plugins", plugin, "index.ts"),
+  ]
+  for (const path of candidates) {
+    if (!existsSync(path)) continue
+    const mod = await import(path)
+    if (typeof mod.install !== "function") throw new Error(`missing install() in ${path}`)
+    await mod.install(editor)
+    return
+  }
+  throw new Error(`plugin not found: ${plugin}`)
 }
 
 export async function install(editor: Editor): Promise<void> {
@@ -29,9 +40,9 @@ export async function install(editor: Editor): Promise<void> {
   setFaceAttribute("default", "height", 140)
   editor.setTheme(gruvbox.gruvboxDarkHardTheme)
 
-  await loadJemacsPlugin(editor, "plugins/vertico.ts")
-  await loadJemacsPlugin(editor, "plugins/window.ts")
-  await loadJemacsPlugin(editor, "plugins/tiling.ts")
+  await loadJemacsPlugin(editor, "vertico")
+  await loadJemacsPlugin(editor, "window")
+  await loadJemacsPlugin(editor, "tiling")
 
   editor.enableMinorMode("linum-mode")
   editor.enableMinorMode("vertico-mode")
@@ -58,12 +69,8 @@ async function loadPackages(editor: Editor): Promise<void> {
   for (const name of entries.sort()) {
     if (name.startsWith(".")) continue
     const path = join(packagesDir, name, "index.ts")
-    try {
-      const mod = await import(path)
-      if (typeof mod.install === "function") await mod.install(editor)
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") continue
-      throw error
-    }
+    if (!existsSync(path)) continue
+    const mod = await import(path)
+    if (typeof mod.install === "function") await mod.install(editor)
   }
 }
