@@ -9,14 +9,16 @@ JEMACS_HOME="${JEMACS_HOME:-${VIBE_DIR}/jemacs-opentui}"
 PACKAGES_REPO="${JEMACS_PACKAGES:-${VIBE_DIR}/jemacs-packages}"
 BIN_DIR="${BIN_DIR:-${HOME}/.local/bin}"
 
+run_bun() {
+  if command -v bun >/dev/null 2>&1; then
+    bun "$@"
+  else
+    npx bun "$@"
+  fi
+}
+
 echo "jemacs:    ${JEMACS_HOME}"
 echo "config:    ${CONFIG_REPO}"
-
-BUN="$(command -v bun 2>/dev/null || true)"
-if [[ -z "${BUN}" ]]; then
-  BUN="npx bun"
-fi
-
 echo "packages:  ${PACKAGES_REPO}"
 
 git -C "${JEMACS_HOME}" pull --ff-only
@@ -24,10 +26,10 @@ git -C "${CONFIG_REPO}" pull --ff-only
 git -C "${PACKAGES_REPO}" pull --ff-only
 
 cd "${JEMACS_HOME}"
-"${BUN}" install
-"${BUN}" run check || echo "warn: tsc reported errors"
+run_bun install
+run_bun run check || echo "warn: tsc reported errors"
 if [[ "${JEMACS_DEPLOY_SKIP_TEST:-}" != "1" ]]; then
-  "${BUN}" test || echo "warn: some tests failed (set JEMACS_DEPLOY_SKIP_TEST=1 to skip)"
+  run_bun test || echo "warn: some tests failed (set JEMACS_DEPLOY_SKIP_TEST=1 to skip)"
 fi
 
 mkdir -p "${BIN_DIR}" "${HOME}/.jemacs"
@@ -35,7 +37,11 @@ mkdir -p "${BIN_DIR}" "${HOME}/.jemacs"
 cat > "${BIN_DIR}/jemacs" <<EOF
 #!/usr/bin/env bash
 export JEMACS_HOME="${JEMACS_HOME}"
-exec ${BUN} run "\${JEMACS_HOME}/src/main.ts" "\$@"
+if command -v bun >/dev/null 2>&1; then
+  exec bun run "\${JEMACS_HOME}/src/main.ts" "\$@"
+else
+  exec npx bun run "\${JEMACS_HOME}/src/main.ts" "\$@"
+fi
 EOF
 chmod +x "${BIN_DIR}/jemacs"
 
