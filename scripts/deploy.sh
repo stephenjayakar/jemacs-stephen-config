@@ -11,6 +11,12 @@ BIN_DIR="${BIN_DIR:-${HOME}/.local/bin}"
 
 echo "jemacs:    ${JEMACS_HOME}"
 echo "config:    ${CONFIG_REPO}"
+
+BUN="$(command -v bun 2>/dev/null || true)"
+if [[ -z "${BUN}" ]]; then
+  BUN="npx bun"
+fi
+
 echo "packages:  ${PACKAGES_REPO}"
 
 git -C "${JEMACS_HOME}" pull --ff-only
@@ -18,10 +24,10 @@ git -C "${CONFIG_REPO}" pull --ff-only
 git -C "${PACKAGES_REPO}" pull --ff-only
 
 cd "${JEMACS_HOME}"
-bun install
-bun run check || echo "warn: tsc reported errors"
+"${BUN}" install
+"${BUN}" run check || echo "warn: tsc reported errors"
 if [[ "${JEMACS_DEPLOY_SKIP_TEST:-}" != "1" ]]; then
-  bun test || echo "warn: some tests failed (set JEMACS_DEPLOY_SKIP_TEST=1 to skip)"
+  "${BUN}" test || echo "warn: some tests failed (set JEMACS_DEPLOY_SKIP_TEST=1 to skip)"
 fi
 
 mkdir -p "${BIN_DIR}" "${HOME}/.jemacs"
@@ -29,7 +35,7 @@ mkdir -p "${BIN_DIR}" "${HOME}/.jemacs"
 cat > "${BIN_DIR}/jemacs" <<EOF
 #!/usr/bin/env bash
 export JEMACS_HOME="${JEMACS_HOME}"
-exec bun run "\${JEMACS_HOME}/src/main.ts" "\$@"
+exec ${BUN} run "\${JEMACS_HOME}/src/main.ts" "\$@"
 EOF
 chmod +x "${BIN_DIR}/jemacs"
 
