@@ -25,6 +25,43 @@ async function loadJemacsPlugin(editor: Editor, plugin: string): Promise<void> {
   throw new Error(`plugin not found: ${plugin}`)
 }
 
+function packagesDir(): string {
+  return process.env.JEMACS_PACKAGES ?? join(homedir(), ".jemacs", "packages")
+}
+
+/** Load a package without blocking editor startup. */
+function loadPackageAsync(editor: Editor, name: string, afterInstall?: (editor: Editor) => void): void {
+  const path = join(packagesDir(), name, "index.ts")
+  if (!existsSync(path)) return
+  void import(path)
+    .then(async mod => {
+      if (typeof mod.install === "function") await mod.install(editor)
+      afterInstall?.(editor)
+    })
+    .catch(error => {
+      editor.message(`Failed to load ${name}: ${error instanceof Error ? error.message : String(error)}`)
+    })
+}
+
+async function loadPackages(editor: Editor): Promise<void> {
+  const dir = packagesDir()
+  const { readdir } = await import("node:fs/promises")
+  let entries: string[]
+  try {
+    entries = await readdir(dir)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return
+    throw error
+  }
+  for (const name of entries.sort()) {
+    if (name.startsWith(".") || name === "gemini") continue
+    const path = join(dir, name, "index.ts")
+    if (!existsSync(path)) continue
+    const mod = await import(path)
+    if (typeof mod.install === "function") await mod.install(editor)
+  }
+}
+
 export async function install(editor: Editor): Promise<void> {
   const { setCustom } = await import(join(jemacsHome(), "src/runtime/custom.ts"))
   const { setFaceAttribute } = await import(join(jemacsHome(), "src/runtime/faces.ts"))
@@ -54,27 +91,6 @@ export async function install(editor: Editor): Promise<void> {
   editor.key("s-=", "text-scale-adjust")
 
   await loadPackages(editor)
-}
 
-function packagesDir(): string {
-  return process.env.JEMACS_PACKAGES ?? join(homedir(), ".jemacs", "packages")
-}
-
-async function loadPackages(editor: Editor): Promise<void> {
-  const dir = packagesDir()
-  const { readdir } = await import("node:fs/promises")
-  let entries: string[]
-  try {
-    entries = await readdir(dir)
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return
-    throw error
-  }
-  for (const name of entries.sort()) {
-    if (name.startsWith(".")) continue
-    const path = join(dir, name, "index.ts")
-    if (!existsSync(path)) continue
-    const mod = await import(path)
-    if (typeof mod.install === "function") await mod.install(editor)
-  }
+  loadPackageAsync(editor, "gemini")
 }
