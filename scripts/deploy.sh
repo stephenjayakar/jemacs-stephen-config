@@ -32,6 +32,9 @@ if [[ "${JEMACS_DEPLOY_SKIP_TEST:-}" != "1" ]]; then
   run_bun test || echo "warn: some tests failed (set JEMACS_DEPLOY_SKIP_TEST=1 to skip)"
 fi
 
+cd "${PACKAGES_REPO}"
+run_bun install
+
 mkdir -p "${BIN_DIR}" "${HOME}/.jemacs"
 
 chmod +x "${CONFIG_REPO}/scripts/jemacs"
