@@ -63,6 +63,9 @@ async function loadPackages(editor: Editor): Promise<void> {
 }
 
 export async function install(editor: Editor): Promise<void> {
+  // Tree-sitter grammars are opt-in; markdown mode font-lock depends on them.
+  await loadJemacsPlugin(editor, "tree-sitter-grammars")
+
   const { setCustom } = await import(join(jemacsHome(), "src/runtime/custom.ts"))
   const { setFaceAttribute } = await import(join(jemacsHome(), "src/runtime/faces.ts"))
   const { enableBuiltinTheme } = await import(join(jemacsHome(), "src/themes/index.ts"))
