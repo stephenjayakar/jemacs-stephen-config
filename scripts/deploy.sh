@@ -34,16 +34,8 @@ fi
 
 mkdir -p "${BIN_DIR}" "${HOME}/.jemacs"
 
-cat > "${BIN_DIR}/jemacs" <<EOF
-#!/usr/bin/env bash
-export JEMACS_HOME="${JEMACS_HOME}"
-if command -v bun >/dev/null 2>&1; then
-  exec bun run "\${JEMACS_HOME}/src/main.ts" "\$@"
-else
-  exec npx bun run "\${JEMACS_HOME}/src/main.ts" "\$@"
-fi
-EOF
-chmod +x "${BIN_DIR}/jemacs"
+chmod +x "${CONFIG_REPO}/scripts/jemacs"
+ln -sf "${CONFIG_REPO}/scripts/jemacs" "${BIN_DIR}/jemacs"
 
 ln -sf "${CONFIG_REPO}/install.ts" "${HOME}/.jemacs/init.ts"
 ln -sfn "${PACKAGES_REPO}" "${HOME}/.jemacs/packages"

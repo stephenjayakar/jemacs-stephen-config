@@ -56,19 +56,23 @@ export async function install(editor: Editor): Promise<void> {
   await loadPackages(editor)
 }
 
+function packagesDir(): string {
+  return process.env.JEMACS_PACKAGES ?? join(homedir(), ".jemacs", "packages")
+}
+
 async function loadPackages(editor: Editor): Promise<void> {
-  const packagesDir = join(homedir(), ".jemacs", "packages")
+  const dir = packagesDir()
   const { readdir } = await import("node:fs/promises")
   let entries: string[]
   try {
-    entries = await readdir(packagesDir)
+    entries = await readdir(dir)
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return
     throw error
   }
   for (const name of entries.sort()) {
     if (name.startsWith(".")) continue
-    const path = join(packagesDir, name, "index.ts")
+    const path = join(dir, name, "index.ts")
     if (!existsSync(path)) continue
     const mod = await import(path)
     if (typeof mod.install === "function") await mod.install(editor)

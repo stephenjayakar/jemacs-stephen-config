@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Resolve sibling repos from this script's real path (follow ~/.local/bin/jemacs symlink).
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE" ]]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="${DIR}/${SOURCE}"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+CONFIG_REPO="$(cd "${SCRIPT_DIR}/.." && pwd)"
+VIBE_DIR="$(cd "${CONFIG_REPO}/.." && pwd)"
+
+export JEMACS_HOME="${JEMACS_HOME:-${VIBE_DIR}/jemacs-opentui}"
+export JEMACS_INIT_PATH="${JEMACS_INIT_PATH:-${CONFIG_REPO}/install.ts}"
+export JEMACS_PACKAGES="${JEMACS_PACKAGES:-${VIBE_DIR}/jemacs-packages}"
+export PATH="${JEMACS_HOME}/node_modules/.bin:${PATH}"
+
+run_bun() {
+  if command -v bun >/dev/null 2>&1; then
+    bun "$@"
+  else
+    npx bun "$@"
+  fi
+}
+
+# Rebuild Electron bundle when dist is missing or kernel/renderer sources changed.
+gui_build_stale() {
+  local home="$1"
+  local renderer="${home}/dist/electron/renderer.js"
+  [[ -f "${home}/dist/electron/bootstrap.mjs" && -f "${renderer}" ]] || return 0
+  [[ "${JEMACS_GUI_REBUILD:-}" == "1" ]] && return 0
+  [[ "${home}/scripts/build-electron.ts" -nt "${renderer}" ]] && return 0
+  [[ "${home}/package.json" -nt "${renderer}" ]] && return 0
+  find "${home}/src/electron" -type f \
+    \( -name '*.ts' -o -name '*.tsx' -o -name '*.css' -o -name '*.html' -o -name '*.mjs' \) \
+    -newer "${renderer}" -print -quit | grep -q .
+}
+
+ensure_gui_build() {
+  cd "${JEMACS_HOME}"
+  if [[ "${JEMACS_GUI_SKIP_REBUILD:-}" == "1" ]]; then
+    [[ -f dist/electron/bootstrap.mjs && -f dist/electron/renderer.js ]] \
+      || run_bun run scripts/build-electron.ts
+    return
+  fi
+  if gui_build_stale "${JEMACS_HOME}"; then
+    run_bun run scripts/build-electron.ts
+  fi
+}
+
+args=("$@")
+gui=0
+filtered=()
+for arg in "${args[@]}"; do
+  if [[ "$arg" == "--gui" || "$arg" == "--smoke-gui" ]]; then
+    gui=1
+  else
+    filtered+=("$arg")
+  fi
+done
+
+if [[ "$gui" -eq 1 ]]; then
+  ensure_gui_build
+  if [[ ${#filtered[@]} -gt 0 ]]; then
+    if command -v electron >/dev/null 2>&1; then
+      exec electron dist/electron/bootstrap.mjs "${filtered[@]}"
+    else
+      exec npx electron dist/electron/bootstrap.mjs "${filtered[@]}"
+    fi
+  else
+    if command -v electron >/dev/null 2>&1; then
+      exec electron dist/electron/bootstrap.mjs
+    else
+      exec npx electron dist/electron/bootstrap.mjs
+    fi
+  fi
+else
+  if command -v bun >/dev/null 2>&1; then
+    exec bun run "${JEMACS_HOME}/src/main.ts" "$@"
+  else
+    exec npx bun run "${JEMACS_HOME}/src/main.ts" "$@"
+  fi
+fi
