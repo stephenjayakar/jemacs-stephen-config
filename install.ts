@@ -72,6 +72,7 @@ export async function install(editor: Editor): Promise<void> {
 
   const userTemporaryFileDirectory = join(tmpdir(), userInfo().username)
   setCustom("backup-directory-alist", [[".", userTemporaryFileDirectory]])
+  setCustom("markdown-fontify-code-blocks-natively", true)
 
   const gruvbox = await import(join(jemacsHome(), "plugins/gruvbox-dark-hard.ts"))
   gruvbox.install(editor)
