@@ -1,12 +1,13 @@
 import { existsSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 import { homedir } from "node:os"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
 import { tmpdir, userInfo } from "node:os"
 
 type Editor = import("../jemacs-opentui/src/kernel/editor").Editor
 
 function jemacsHome(): string {
-  return process.env.JEMACS_HOME ?? join(homedir(), "programming", "vibe", "jemacs-opentui")
+  return process.env.JEMACS_HOME ?? join(dirname(fileURLToPath(import.meta.url)), "..", "jemacs-opentui")
 }
 
 async function loadJemacsPlugin(editor: Editor, plugin: string): Promise<void> {
@@ -66,6 +67,7 @@ export async function install(editor: Editor): Promise<void> {
   // Tree-sitter grammars are opt-in; markdown mode font-lock depends on them.
   await loadJemacsPlugin(editor, "tree-sitter-grammars")
 
+  await import(join(jemacsHome(), "plugins/markdown/index.ts"))
   const { setCustom } = await import(join(jemacsHome(), "src/runtime/custom.ts"))
   const { setFaceAttribute } = await import(join(jemacsHome(), "src/runtime/faces.ts"))
   const { enableBuiltinTheme } = await import(join(jemacsHome(), "src/themes/index.ts"))
