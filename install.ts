@@ -55,7 +55,7 @@ async function loadPackages(editor: Editor): Promise<void> {
     throw error
   }
   for (const name of entries.sort()) {
-    if (name.startsWith(".") || name === "gemini") continue
+    if (name.startsWith(".") || name === "gemini" || name === "jagent") continue
     const path = join(dir, name, "index.ts")
     if (!existsSync(path)) continue
     const mod = await import(path)
@@ -102,4 +102,5 @@ export async function install(editor: Editor): Promise<void> {
   await loadPackages(editor)
 
   loadPackageAsync(editor, "gemini")
+  loadPackageAsync(editor, "jagent")
 }
