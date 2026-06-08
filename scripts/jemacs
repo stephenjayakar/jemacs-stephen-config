@@ -50,10 +50,9 @@ ensure_gui_build() {
   fi
 }
 
-args=("$@")
 gui=0
 filtered=()
-for arg in "${args[@]}"; do
+for arg in "$@"; do
   if [[ "$arg" == "--gui" || "$arg" == "--smoke-gui" ]]; then
     gui=1
   else
