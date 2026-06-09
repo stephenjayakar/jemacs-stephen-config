@@ -1,7 +1,8 @@
 import { existsSync } from "node:fs"
+import { appendFile, mkdir } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
 import { homedir } from "node:os"
-import { dirname, join } from "node:path"
+import { dirname, join, resolve } from "node:path"
 import { tmpdir, userInfo } from "node:os"
 
 type Editor = import("../jemacs-opentui/src/kernel/editor").Editor
@@ -63,6 +64,24 @@ async function loadPackages(editor: Editor): Promise<void> {
   }
 }
 
+function installPersonalCommands(editor: Editor): void {
+  editor.command("my/i-bind-key", async ({ editor, args }) => {
+    const sequence = args[0] ?? await editor.prompt("Key sequence to bind: ", "", "keybind")
+    if (!sequence) return
+    const command = args[1] ?? await editor.completingRead(`Command to bind to ${sequence}: `, {
+      collection: editor.commands.names(),
+      history: "command",
+    })
+    if (!command) return
+    if (!editor.commands.get(command)) throw new Error(`Not an interactive command: ${command}`)
+    editor.key(sequence, command)
+    const file = resolve(process.env.JEMACS_KEYBINDS_FILE ?? join(homedir(), ".jemacs", "keybinds.js"))
+    await mkdir(dirname(file), { recursive: true })
+    await appendFile(file, `// Added on ${new Date().toISOString()}\neditor.key(${JSON.stringify(sequence)}, ${JSON.stringify(command)})\n`)
+    editor.message(`Bound ${sequence} to ${command} and saved it to ${file}`)
+  }, "Interactively bind a key and persist it to the Jemacs keybinds file.")
+}
+
 export async function install(editor: Editor): Promise<void> {
   // Tree-sitter grammars are opt-in; markdown mode font-lock depends on them.
   await loadJemacsPlugin(editor, "tree-sitter-grammars")
@@ -92,6 +111,8 @@ export async function install(editor: Editor): Promise<void> {
 
   editor.enableMinorMode("linum-mode")
   editor.enableMinorMode("vertico-mode")
+
+  installPersonalCommands(editor)
 
   editor.key("C-c t", "lsp-find-definition")
   editor.key("C-c C-t", "lsp-ui-peek-find-implementation")
