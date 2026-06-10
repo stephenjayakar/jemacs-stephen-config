@@ -119,6 +119,7 @@ export async function install(editor: Editor): Promise<void> {
   editor.key("C-x C-a", "lsp-execute-code-action")
   editor.key("C-x C-j", "previous-buffer")
   editor.key("C-x C-l", "next-buffer")
+  editor.key("C-c g s", "magit-status")
   editor.key("s-f", "counsel-ag")
   editor.key("s-=", "text-scale-adjust")
 
