@@ -115,6 +115,7 @@ export async function install(editor: Editor): Promise<void> {
 
   installPersonalCommands(editor)
 
+  editor.key("C-x l", "goto-line")
   editor.key("C-c t", "lsp-find-definition")
   editor.key("C-c C-t", "lsp-ui-peek-find-implementation")
   editor.key("C-x C-a", "lsp-execute-code-action")
