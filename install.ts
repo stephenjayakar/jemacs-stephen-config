@@ -115,8 +115,6 @@ function installPersonalCommands(editor: Editor): void {
     editor.message(`Bound ${sequence} to ${command} and saved it to ${file}`)
   }
   editor.command("my/bind-key", bindKey, "Interactively bind a key and persist it to the Jemacs keybinds file.")
-  editor.command("my/i-bind-key", bindKey, "Interactively bind a key and persist it to the Jemacs keybinds file.")
-  editor.command("i-bind-key", bindKey, "Interactively bind a key and persist it to the Jemacs keybinds file.")
 }
 
 export async function install(editor: Editor): Promise<void> {
