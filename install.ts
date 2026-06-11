@@ -1,11 +1,13 @@
 import { existsSync } from "node:fs"
-import { appendFile, mkdir } from "node:fs/promises"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
 import { homedir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { tmpdir, userInfo } from "node:os"
 
 type Editor = import("../jemacs-opentui/src/kernel/editor").Editor
+type CommandContext = import("../jemacs-opentui/src/kernel/command").CommandContext
+type SavedKeybind = { sequence: string; command: string; addedAt?: string }
 
 function jemacsHome(): string {
   return process.env.JEMACS_HOME ?? join(dirname(fileURLToPath(import.meta.url)), "..", "jemacs-opentui")
@@ -64,8 +66,41 @@ async function loadPackages(editor: Editor): Promise<void> {
   }
 }
 
+function keybindsFile(): string {
+  return resolve(process.env.JEMACS_KEYBINDS_FILE ?? join(homedir(), ".jemacs", "keybinds.json"))
+}
+
+async function readSavedKeybinds(): Promise<SavedKeybind[]> {
+  const file = keybindsFile()
+  if (!existsSync(file)) return []
+  const raw = await readFile(file, "utf8")
+  const parsed = JSON.parse(raw) as unknown
+  if (!Array.isArray(parsed)) return []
+  return parsed.filter((entry): entry is SavedKeybind =>
+    typeof entry === "object"
+    && entry != null
+    && typeof (entry as SavedKeybind).sequence === "string"
+    && typeof (entry as SavedKeybind).command === "string")
+}
+
+async function saveKeybind(sequence: string, command: string): Promise<void> {
+  const file = keybindsFile()
+  const entries = await readSavedKeybinds()
+  const withoutOld = entries.filter(entry => entry.sequence !== sequence)
+  withoutOld.push({ sequence, command, addedAt: new Date().toISOString() })
+  await mkdir(dirname(file), { recursive: true })
+  await writeFile(file, `${JSON.stringify(withoutOld, null, 2)}\n`)
+}
+
+async function loadSavedKeybinds(editor: Editor): Promise<void> {
+  for (const { sequence, command } of await readSavedKeybinds()) {
+    if (editor.commands.get(command)) editor.key(sequence, command)
+    else editor.message(`Skipping saved key ${sequence}: unknown command ${command}`)
+  }
+}
+
 function installPersonalCommands(editor: Editor): void {
-  editor.command("my/i-bind-key", async ({ editor, args }) => {
+  const bindKey = async ({ editor, args }: CommandContext) => {
     const sequence = args[0] ?? await editor.prompt("Key sequence to bind: ", "", "keybind")
     if (!sequence) return
     const command = args[1] ?? await editor.completingRead(`Command to bind to ${sequence}: `, {
@@ -75,11 +110,13 @@ function installPersonalCommands(editor: Editor): void {
     if (!command) return
     if (!editor.commands.get(command)) throw new Error(`Not an interactive command: ${command}`)
     editor.key(sequence, command)
-    const file = resolve(process.env.JEMACS_KEYBINDS_FILE ?? join(homedir(), ".jemacs", "keybinds.js"))
-    await mkdir(dirname(file), { recursive: true })
-    await appendFile(file, `// Added on ${new Date().toISOString()}\neditor.key(${JSON.stringify(sequence)}, ${JSON.stringify(command)})\n`)
+    await saveKeybind(sequence, command)
+    const file = keybindsFile()
     editor.message(`Bound ${sequence} to ${command} and saved it to ${file}`)
-  }, "Interactively bind a key and persist it to the Jemacs keybinds file.")
+  }
+  editor.command("my/bind-key", bindKey, "Interactively bind a key and persist it to the Jemacs keybinds file.")
+  editor.command("my/i-bind-key", bindKey, "Interactively bind a key and persist it to the Jemacs keybinds file.")
+  editor.command("i-bind-key", bindKey, "Interactively bind a key and persist it to the Jemacs keybinds file.")
 }
 
 export async function install(editor: Editor): Promise<void> {
@@ -114,6 +151,7 @@ export async function install(editor: Editor): Promise<void> {
   editor.enableMinorMode("vertico-mode")
 
   installPersonalCommands(editor)
+  await loadSavedKeybinds(editor)
 
   editor.key("C-x l", "goto-line")
   editor.key("C-c t", "lsp-find-definition")
