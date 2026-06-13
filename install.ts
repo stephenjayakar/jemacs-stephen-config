@@ -101,7 +101,7 @@ async function loadSavedKeybinds(editor: Editor): Promise<void> {
 
 function installPersonalCommands(editor: Editor): void {
   const bindKey = async ({ editor, args }: CommandContext) => {
-    const sequence = args[0] ?? await editor.prompt("Key sequence to bind: ", "", "keybind")
+    const sequence = args[0] ?? await editor.readKeySequence("Press key sequence to bind: ")
     if (!sequence) return
     const command = args[1] ?? await editor.completingRead(`Command to bind to ${sequence}: `, {
       collection: editor.commands.names(),
@@ -115,6 +115,8 @@ function installPersonalCommands(editor: Editor): void {
     editor.message(`Bound ${sequence} to ${command} and saved it to ${file}`)
   }
   editor.command("my/bind-key", bindKey, "Interactively bind a key and persist it to the Jemacs keybinds file.")
+  editor.command("my/bind", bindKey, "Alias for `my/bind-key`.")
+  editor.command("i-bind-key", bindKey, "Alias for `my/bind-key`.")
 }
 
 export async function install(editor: Editor): Promise<void> {
