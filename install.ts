@@ -149,6 +149,7 @@ export async function install(editor: Editor): Promise<void> {
 
   editor.enableMinorMode("linum-mode")
   editor.enableMinorMode("vertico-mode")
+  editor.enableMinorMode("global-undo-tree-mode")
 
   installPersonalCommands(editor)
   await loadSavedKeybinds(editor)
