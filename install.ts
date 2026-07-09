@@ -1,16 +1,16 @@
 import { existsSync } from "node:fs"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
-import { fileURLToPath } from "node:url"
 import { homedir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { tmpdir, userInfo } from "node:os"
 
-type Editor = import("../jemacs-opentui/src/kernel/editor").Editor
-type CommandContext = import("../jemacs-opentui/src/kernel/command").CommandContext
+type Editor = import("@jemacs/core").Editor
+type CommandContext = import("@jemacs/core").CommandContext
 type SavedKeybind = { sequence: string; command: string; addedAt?: string }
 
 function jemacsHome(): string {
-  return process.env.JEMACS_HOME ?? join(dirname(fileURLToPath(import.meta.url)), "..", "jemacs-opentui")
+  const dataHome = process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share")
+  return process.env.JEMACS_HOME ?? join(dataHome, "jemacs")
 }
 
 async function loadJemacsPlugin(editor: Editor, plugin: string): Promise<void> {
