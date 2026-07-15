@@ -131,6 +131,8 @@ export async function install(editor: Editor): Promise<void> {
   const userTemporaryFileDirectory = join(tmpdir(), userInfo().username)
   setCustom("backup-directory-alist", [[".", userTemporaryFileDirectory]])
   setCustom("markdown-fontify-code-blocks-natively", true)
+  setCustom("markdown-indent-on-enter", "indent-and-new-item")
+  setCustom("markdown-trim-trailing-whitespace-on-enter", true)
   setCustom("lsp-ui-doc-enable", true)
   // Notion-style markdown layout (mirrors ~/.emacs.d/stephen.el markdown-mode-hook).
   setCustom("markdown-fill-column", 100)
