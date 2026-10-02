@@ -126,7 +126,7 @@ export async function install(editor: Editor): Promise<void> {
   await import(join(jemacsHome(), "plugins/markdown/index.ts"))
   const { setCustom } = await import(join(jemacsHome(), "src/runtime/custom.ts"))
   const { setFaceAttribute } = await import(join(jemacsHome(), "src/runtime/faces.ts"))
-  const { enableBuiltinTheme } = await import(join(jemacsHome(), "src/themes/index.ts"))
+  const { enableBuiltinTheme, registerTheme } = await import(join(jemacsHome(), "src/themes/index.ts"))
 
   const userTemporaryFileDirectory = join(tmpdir(), userInfo().username)
   setCustom("backup-directory-alist", [[".", userTemporaryFileDirectory]])
@@ -140,10 +140,16 @@ export async function install(editor: Editor): Promise<void> {
 
   const gruvbox = await import(join(jemacsHome(), "plugins/gruvbox-dark-hard.ts"))
   gruvbox.install(editor)
-  enableBuiltinTheme(gruvbox.gruvboxDarkHardTheme.name)
+  // Gruvbox dark hard, but with a pitch-black background instead of #1d2021.
+  const baseTheme = gruvbox.gruvboxDarkHardTheme
+  const theme = registerTheme({
+    ...baseTheme,
+    faces: { ...baseTheme.faces, default: { ...baseTheme.faces.default, bg: "#000000" } },
+  })
+  enableBuiltinTheme(theme.name)
   setFaceAttribute("default", "family", "Fira Code")
   setFaceAttribute("default", "height", 140)
-  editor.setTheme(gruvbox.gruvboxDarkHardTheme)
+  editor.setTheme(theme)
 
   await loadJemacsPlugin(editor, "vertico")
   await loadJemacsPlugin(editor, "window")
