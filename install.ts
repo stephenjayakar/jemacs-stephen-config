@@ -195,6 +195,13 @@ export async function install(editor: Editor): Promise<void> {
   await loadSavedKeybinds(editor)
 
   editor.key("C-x l", "goto-line")
+  editor.key("s-q", "save-buffers-kill-terminal")
+  // Cmd -/=/0 like other macOS apps; text-scale-adjust's repeat map would swallow a bare "-".
+  editor.command("my/text-scale-reset", ({ editor }) => editor.run("text-scale-set", ["0"]), "Reset buffer text scale.")
+  editor.key("s--", "text-scale-decrease")
+  editor.key("s-=", "text-scale-increase")
+  editor.key("s-+", "text-scale-increase")
+  editor.key("s-0", "my/text-scale-reset")
   editor.key("C-c t", "lsp-find-definition")
   editor.key("C-c C-t", "lsp-ui-peek-find-implementation")
   editor.key("C-x C-a", "lsp-execute-code-action")
