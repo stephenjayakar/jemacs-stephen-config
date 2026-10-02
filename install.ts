@@ -1,4 +1,5 @@
-import { existsSync } from "node:fs"
+import { spawn } from "node:child_process"
+import { existsSync, openSync } from "node:fs"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { dirname, join, resolve } from "node:path"
@@ -119,6 +120,36 @@ function installPersonalCommands(editor: Editor): void {
   editor.command("i-bind-key", bindKey, "Alias for `my/bind-key`.")
 }
 
+/** Quit (offering to save), then relaunch `jemacs --gui` with a forced GUI rebuild. */
+function installRestartCommand(editor: Editor): void {
+  editor.command("my/restart-jemacs", async ({ editor }) => {
+    const { addHook, removeHook } = await import(join(jemacsHome(), "src/kernel/hooks.ts"))
+    // Spawn from kill-emacs-hook so cancelling the save prompt leaves no relauncher behind.
+    const relaunch = () => {
+      const log = openSync(join(tmpdir(), "jemacs-restart.log"), "w")
+      const env = { ...process.env, JEMACS_GUI_REBUILD: "1" }
+      // Inherited from an Electron parent, this would make the new GUI start as plain Node.
+      delete env.ELECTRON_RUN_AS_NODE
+      // Wait for this process to exit so the new instance doesn't race it for the window
+      // and global hotkey; the launcher rebuilds the Electron assets before starting.
+      const child = spawn("/bin/sh", ["-c", 'while kill -0 "$1" 2>/dev/null; do sleep 0.2; done; exec "$2" --gui', "sh", String(process.pid), join(jemacsHome(), "scripts/jemacs")], {
+        detached: true,
+        stdio: ["ignore", log, log],
+        env,
+      })
+      child.unref()
+    }
+    addHook("kill-emacs-hook", relaunch)
+    try {
+      await editor.run("save-buffers-kill-terminal")
+    } finally {
+      // quit() snapshots the hook list synchronously, so removing it here is safe either way.
+      removeHook("kill-emacs-hook", relaunch)
+    }
+  }, "Quit Jemacs and relaunch it as `jemacs --gui`, rebuilding the GUI first.")
+  editor.key("s-r", "my/restart-jemacs")
+}
+
 export async function install(editor: Editor): Promise<void> {
   // Tree-sitter grammars are opt-in; markdown mode font-lock depends on them.
   await loadJemacsPlugin(editor, "tree-sitter-grammars")
@@ -160,6 +191,7 @@ export async function install(editor: Editor): Promise<void> {
   editor.enableMinorMode("global-undo-tree-mode")
 
   installPersonalCommands(editor)
+  installRestartCommand(editor)
   await loadSavedKeybinds(editor)
 
   editor.key("C-x l", "goto-line")
