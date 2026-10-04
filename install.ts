@@ -168,6 +168,8 @@ export async function install(editor: Editor): Promise<void> {
   // Notion-style markdown layout (mirrors ~/.emacs.d/stephen.el markdown-mode-hook).
   setCustom("markdown-fill-column", 100)
   setCustom("markdown-visual-fill-column-center-text", true)
+  // Keep the column's pixel width when zooming; bigger text wraps sooner.
+  setCustom("markdown-visual-fill-column-adjust-for-text-scale", false)
 
   const gruvbox = await import(join(jemacsHome(), "plugins/gruvbox-dark-hard.ts"))
   gruvbox.install(editor)
