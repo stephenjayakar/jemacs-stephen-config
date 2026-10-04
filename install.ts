@@ -165,6 +165,8 @@ export async function install(editor: Editor): Promise<void> {
   setCustom("markdown-indent-on-enter", "indent-and-new-item")
   setCustom("markdown-trim-trailing-whitespace-on-enter", true)
   setCustom("lsp-ui-doc-enable", true)
+  // find-file matches anywhere in a name: `spire` finds `kanto spire`.
+  setCustom("completion-category-overrides", [["file", ["styles", "substring", "basic"]]])
   // Notion-style markdown layout (mirrors ~/.emacs.d/stephen.el markdown-mode-hook).
   setCustom("markdown-fill-column", 100)
   setCustom("markdown-visual-fill-column-center-text", true)
