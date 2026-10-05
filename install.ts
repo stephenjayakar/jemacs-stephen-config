@@ -120,10 +120,13 @@ function installPersonalCommands(editor: Editor): void {
   editor.command("i-bind-key", bindKey, "Alias for `my/bind-key`.")
 }
 
-/** Quit (offering to save), then relaunch `jemacs --gui` with a forced GUI rebuild. */
+/** Quit (offering to save), then relaunch `jemacs --gui` on the file that was on screen, with a forced GUI rebuild. */
 function installRestartCommand(editor: Editor): void {
   editor.command("my/restart-jemacs", async ({ editor }) => {
     const { addHook, removeHook } = await import(join(jemacsHome(), "src/kernel/hooks.ts"))
+    // Only the selected window's file comes back, not every open buffer.
+    const path = editor.currentBuffer.path
+    const reopen = path && existsSync(path) ? [path] : []
     // Spawn from kill-emacs-hook so cancelling the save prompt leaves no relauncher behind.
     const relaunch = () => {
       const log = openSync(join(tmpdir(), "jemacs-restart.log"), "w")
@@ -132,7 +135,7 @@ function installRestartCommand(editor: Editor): void {
       delete env.ELECTRON_RUN_AS_NODE
       // Wait for this process to exit so the new instance doesn't race it for the window
       // and global hotkey; the launcher rebuilds the Electron assets before starting.
-      const child = spawn("/bin/sh", ["-c", 'while kill -0 "$1" 2>/dev/null; do sleep 0.2; done; exec "$2" --gui', "sh", String(process.pid), join(jemacsHome(), "scripts/jemacs")], {
+      const child = spawn("/bin/sh", ["-c", 'pid=$1 launcher=$2; shift 2; while kill -0 "$pid" 2>/dev/null; do sleep 0.2; done; exec "$launcher" --gui "$@"', "sh", String(process.pid), join(jemacsHome(), "scripts/jemacs"), ...reopen], {
         detached: true,
         stdio: ["ignore", log, log],
         env,
@@ -146,7 +149,7 @@ function installRestartCommand(editor: Editor): void {
       // quit() snapshots the hook list synchronously, so removing it here is safe either way.
       removeHook("kill-emacs-hook", relaunch)
     }
-  }, "Quit Jemacs and relaunch it as `jemacs --gui`, rebuilding the GUI first.")
+  }, "Quit Jemacs and relaunch it as `jemacs --gui` on the current file, rebuilding the GUI first.")
   editor.key("s-r", "my/restart-jemacs")
 }
 
