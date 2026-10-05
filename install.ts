@@ -158,7 +158,7 @@ export async function install(editor: Editor): Promise<void> {
   await loadJemacsPlugin(editor, "tree-sitter-grammars")
 
   await import(join(jemacsHome(), "plugins/markdown/index.ts"))
-  const { setCustom } = await import(join(jemacsHome(), "src/runtime/custom.ts"))
+  const { getCustom, setCustom } = await import(join(jemacsHome(), "src/runtime/custom.ts"))
   const { setFaceAttribute } = await import(join(jemacsHome(), "src/runtime/faces.ts"))
   const { enableBuiltinTheme, registerTheme } = await import(join(jemacsHome(), "src/themes/index.ts"))
 
@@ -175,6 +175,10 @@ export async function install(editor: Editor): Promise<void> {
   setCustom("markdown-visual-fill-column-center-text", true)
   // Keep the column's pixel width when zooming; bigger text wraps sooner.
   setCustom("markdown-visual-fill-column-adjust-for-text-scale", false)
+  // Markdown prose sits two `text-scale-increase` steps above the code font.
+  const codeFontHeight = 140
+  const textScaleStep = getCustom("text-scale-mode-step") ?? 1.2
+  setCustom("markdown-body-font-height", Math.round(codeFontHeight * textScaleStep ** 2))
 
   const gruvbox = await import(join(jemacsHome(), "plugins/gruvbox-dark-hard.ts"))
   gruvbox.install(editor)
@@ -186,7 +190,7 @@ export async function install(editor: Editor): Promise<void> {
   })
   enableBuiltinTheme(theme.name)
   setFaceAttribute("default", "family", "Fira Code")
-  setFaceAttribute("default", "height", 140)
+  setFaceAttribute("default", "height", codeFontHeight)
   editor.setTheme(theme)
 
   await loadJemacsPlugin(editor, "vertico")
