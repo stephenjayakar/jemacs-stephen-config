@@ -124,7 +124,7 @@ function installPersonalCommands(editor: Editor): void {
 function installRestartCommand(editor: Editor): void {
   editor.command("my/restart-jemacs", async ({ editor }) => {
     const { addHook, removeHook } = await import(join(jemacsHome(), "src/kernel/hooks.ts"))
-    // Only the selected window's file comes back, not every open buffer.
+    // desktop-save-mode restores the rest; passing the file keeps it selected.
     const path = editor.currentBuffer.path
     const reopen = path && existsSync(path) ? [path] : []
     // Spawn from kill-emacs-hook so cancelling the save prompt leaves no relauncher behind.
@@ -201,6 +201,7 @@ export async function install(editor: Editor): Promise<void> {
   editor.enableMinorMode("vertico-mode")
   editor.enableMinorMode("global-undo-tree-mode")
   editor.enableMinorMode("delete-selection-mode")
+  editor.enableMinorMode("desktop-save-mode")
 
   installPersonalCommands(editor)
   installRestartCommand(editor)
