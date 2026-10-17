@@ -200,6 +200,7 @@ export async function install(editor: Editor): Promise<void> {
   editor.enableMinorMode("linum-mode")
   editor.enableMinorMode("vertico-mode")
   editor.enableMinorMode("global-undo-tree-mode")
+  editor.enableMinorMode("delete-selection-mode")
 
   installPersonalCommands(editor)
   installRestartCommand(editor)
